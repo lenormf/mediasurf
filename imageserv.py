@@ -14,8 +14,6 @@ import itertools
 import collections
 
 # TODO: version dependencies statically
-# TODO: remove PIL to only use FFmpeg?
-import magic
 import bottle
 import ffmpeg
 import PIL
@@ -124,7 +122,7 @@ def get_media_uuid_thumbnail(mdb, uuid_media, breakpoint):
 @mako_view("index")
 def get_index(mdb):
     # NOTE: dict values are a view, not a list, which aren't subscriptable
-    page = mdb.Page(list(mdb.db.values()), request)
+    page = Page(list(mdb.db.values()), request)
 
     return {
         "router": new_router(),
@@ -146,6 +144,16 @@ class Media:
         self.filetime = None
         self.tags = {}
         self.format = None
+
+        # NOTE: This field is used by the view templates to avoid type introspection
+        self.type = None
+
+    def _hash(self, filename, filesize, width, height, format):
+        h = hashlib.sha1()
+        h_data = "%s-%d-%d.%d-%s" % (filename, filesize, width, height, format)
+        h.update(h_data.encode())
+
+        return h.hexdigest()
 
     def ThumbnailResolution(self, breakpoint):
         def scale_resolution(target_width, resolution):
@@ -194,6 +202,8 @@ class Video(Media):
     def __init__(self, path):
         super().__init__(path)
 
+        self.type = "video"
+
         st = self.path.stat()
         self.filetime = datetime.datetime.fromtimestamp(st.st_ctime)
 
@@ -210,11 +220,7 @@ class Video(Media):
         self.resolution = [meta_stream["width"], meta_stream["height"]]
         self.format = probe["format"]["format_name"]
 
-        # TODO: factorise hashing into the parent class
-        h = hashlib.sha1()
-        h_data = "%s-%d-%d.%d-%s" % (self.name, str2int(probe["format"]["size"]), self.resolution[0], self.resolution[1], self.format)
-        h.update(h_data.encode())
-        self.hash = h.hexdigest()
+        self.hash = self._hash(self.name, str2int(probe["format"]["size"]), self.resolution[0], self.resolution[1], self.format)
 
     def CreateThumbnail(self, breakpoint, path_thumbnail, format_thumbnail=Media.FORMAT_THUMBNAIL):
         logging.debug("generating thumbnail for breakpoint %s: %s", breakpoint, path_thumbnail)
@@ -238,6 +244,8 @@ class Image(Media):
     def __init__(self, path):
         super().__init__(path)
 
+        self.type = "image"
+
         try:
             st = self.path.stat()
             self.filetime = datetime.datetime.fromtimestamp(st.st_ctime)
@@ -252,10 +260,7 @@ class Image(Media):
                     else:
                         logging.warning("unknown tag index: %s", k)
 
-                h = hashlib.sha1()
-                h_data = "%s-%d-%d.%d-%s" % (self.name, st.st_size, im.width, im.height, im.format)
-                h.update(h_data.encode())
-                self.hash = h.hexdigest()
+                self.hash = self._hash(self.name, st.st_size, im.width, im.height, im.format)
         except (FileNotFoundError, ValueError, TypeError, OSError, PIL.UnidentifiedImageError) as e:
             raise MediaError("unable to open image: %s" % e)
 
@@ -374,172 +379,238 @@ class QueryParser(collections.OrderedDict):
             raise QueryError("unable to parse query: %s" % e)
 
 
-class ImagesDatabase:
-    class Page:
-        def __init__(self, all_entries, request):
-            logging.debug("Request form filters: %r", [(k, v) for k, v in request.query.items()])
+class Page:
+    def __init__(self, all_entries, request):
+        logging.debug("Request form filters: %r", [(k, v) for k, v in request.query.items()])
 
-            def cast_integer(s):
+        def cast_integer(s):
+            try:
+                return int(s)
+            except ValueError:
+                logging.warning("unable to cast string as integer: %s", s)
+            return s
+
+        def cast_date(s):
+            for D in QueryParser.DATETIME().streamline().exprs:
                 try:
-                    return int(s)
-                except ValueError:
-                    logging.warning("unable to cast string as integer: %s", s)
-                return s
+                    d = D()
+                    d.parseString(s, parseAll=True)
+                    return datetime.datetime.strptime(s, d.format)
+                except pp.ParseException:
+                    pass
+            logging.warning("unable to cast string as date: %s", s)
+            return s
 
-            def cast_date(s):
-                for D in QueryParser.DATETIME().streamline().exprs:
-                    try:
-                        d = D()
-                        d.parseString(s, parseAll=True)
-                        return datetime.datetime.strptime(s, d.format)
-                    except pp.ParseException:
-                        pass
+        def cast_exif_date(s):
+            try:
+                return datetime.datetime.strptime(s, "%Y:%m:%d %H:%M:%S")
+            except ValueError:
                 logging.warning("unable to cast string as date: %s", s)
-                return s
+            return s
 
-            def cast_exif_date(s):
-                try:
-                    return datetime.datetime.strptime(s, "%Y:%m:%d %H:%M:%S")
-                except ValueError:
-                    logging.warning("unable to cast string as date: %s", s)
-                return s
+        self.page = str2int(request.query.get("page"))
+        if self.page is None or self.page < 1:
+            self.page = 1
 
-            self.page = str2int(request.query.get("page"))
-            if self.page is None or self.page < 1:
-                self.page = 1
+        self.page_offset = self.page - 1
 
-            self.page_offset = self.page - 1
+        self.limit = str2int(request.query.get("limit"))
+        if self.limit is None:
+            self.limit = 25
+        elif self.limit < 10:
+            self.limit = 10
 
-            self.limit = str2int(request.query.get("limit"))
-            if self.limit is None:
-                self.limit = 25
-            elif self.limit < 10:
-                self.limit = 10
+        self.all_entries = all_entries
+        self.tag_sort_keys = sorted(set(itertools.chain(*[p.tags.keys() for p in all_entries])), key=lambda x: x.lower())
 
-            self.all_entries = all_entries
-            self.tag_sort_keys = sorted(set(itertools.chain(*[p.tags.keys() for p in all_entries])), key=lambda x: x.lower())
+        # TODO: fuzzy matching
+        self.search_query = request.query.get("search")
+        if self.search_query:
+            try:
+                q = QueryParser(self.search_query)
 
-            # TODO: fuzzy matching
-            self.search_query = request.query.get("search")
-            if self.search_query:
-                try:
-                    q = QueryParser(self.search_query)
+                logging.info("search query: %s", q)
 
-                    logging.info("search query: %s", q)
+                last_sort_key = None
+                for name_filter, predicate in q.items():
+                    logging.debug("filter: %s", name_filter)
+                    logging.debug("predicate: %s", predicate)
 
-                    last_sort_key = None
-                    for name_filter, predicate in q.items():
-                        logging.debug("filter: %s", name_filter)
-                        logging.debug("predicate: %s", predicate)
+                    if name_filter == "tag":
+                        logging.debug("filtering by: %s", name_filter)
 
-                        if name_filter == "tag":
-                            logging.debug("filtering by: %s", name_filter)
+                        self.all_entries = filter(lambda x: predicate.lower() in [t.lower() for t in x.tags.keys()],
+                                                  self.all_entries)
+                    elif name_filter == "sort":
+                        logging.debug("filtering by: %s", name_filter)
 
-                            self.all_entries = filter(lambda x: predicate.lower() in [t.lower() for t in x.tags.keys()],
-                                                      self.all_entries)
-                        elif name_filter == "sort":
-                            logging.debug("filtering by: %s", name_filter)
+                        key_sort = predicate[0][0]
 
-                            key_sort = predicate[0][0]
-
-                            if key_sort == "tag":
-                                cast = predicate[0][2]
-                            else:
-                                cast = predicate[1]
-
-                            f_cast = {
-                                "s": str,
-                                "n": cast_integer,
-                                "d": cast_date,
-                            }[cast]
-
-                            if key_sort == "tag":
-                                if cast == "d":
-                                    # NOTE: the datetimes in EXIF tags have a standard format
-                                    f_cast = cast_exif_date
-                                last_sort_key = lambda x: f_cast(x.tags.get(predicate[0][1], ""))
-                                self.all_entries = sorted(self.all_entries,
-                                                          key=last_sort_key)
-                            elif key_sort == "name":
-                                last_sort_key = lambda x: lambda x: f_cast(x.name)
-                                self.all_entries = sorted(self.all_entries,
-                                                          key=last_sort_key)
-                            elif key_sort == "date":
-                                last_sort_key = lambda x: f_cast(x.filetime)
-                                self.all_entries = sorted(self.all_entries,
-                                                          key=last_sort_key)
-                        elif name_filter == "order":
-                            logging.debug("filtering by: %s", name_filter)
-
-                            if last_sort_key:
-                                self.all_entries = sorted(self.all_entries, key=last_sort_key, reverse=predicate == "desc")
-                        elif name_filter == "name":
-                            logging.debug("filtering by: %s", name_filter)
-
-                            self.all_entries = filter(lambda x: predicate.lower() in x.name.lower(),
-                                                      self.all_entries)
-                        elif name_filter == "date":
-                            logging.debug("filtering by: %s", name_filter)
-
-                            date_predicate = cast_date(predicate)
-                            logging.debug("date predicate: %s", date_predicate)
-                            self.all_entries = filter(lambda x: date_predicate == x.filetime,
-                                                      self.all_entries)
-                        elif name_filter == "from":
-                            logging.debug("filtering by: %s", name_filter)
-
-                            date_predicate = cast_date(predicate)
-                            logging.debug("date predicate: %s", date_predicate)
-                            self.all_entries = filter(lambda x: x.filetime >= date_predicate,
-                                                      self.all_entries)
-                        elif name_filter == "to":
-                            logging.debug("filtering by: %s", name_filter)
-
-                            # FIXME: to:2021 will set the predicate to Jan 1st 2021 which causes lots of false negatives
-                            date_predicate = cast_date(predicate)
-                            logging.debug("date predicate: %s", date_predicate)
-                            self.all_entries = filter(lambda x: x.filetime <= date_predicate,
-                                                      self.all_entries)
+                        if key_sort == "tag":
+                            cast = predicate[0][2]
                         else:
-                            logging.error("unsupported filter: %s", name_filter)
-                except QueryError as e:
-                    logging.error("couldn't parse query: %s", e)
-                    # TODO: signal to the UI that the query is incorrect
+                            cast = predicate[1]
 
-            # NOTE: filter() returns a view, and we need a subscriptable list
-            self.all_entries = list(self.all_entries)
+                        f_cast = {
+                            "s": str,
+                            "n": cast_integer,
+                            "d": cast_date,
+                        }[cast]
 
-            self.all_entries_count = len(self.all_entries)
+                        if key_sort == "tag":
+                            if cast == "d":
+                                # NOTE: the datetimes in EXIF tags have a standard format
+                                f_cast = cast_exif_date
+                            last_sort_key = lambda x: f_cast(x.tags.get(predicate[0][1], ""))
+                            self.all_entries = sorted(self.all_entries,
+                                                      key=last_sort_key)
+                        elif key_sort == "name":
+                            last_sort_key = lambda x: lambda x: f_cast(x.name)
+                            self.all_entries = sorted(self.all_entries,
+                                                      key=last_sort_key)
+                        elif key_sort == "date":
+                            last_sort_key = lambda x: f_cast(x.filetime)
+                            self.all_entries = sorted(self.all_entries,
+                                                      key=last_sort_key)
+                    elif name_filter == "order":
+                        logging.debug("filtering by: %s", name_filter)
 
-            self.entries = self.all_entries[self.page_offset * self.limit:(self.page_offset + 1) * self.limit]
-            self.entries_count = len(self.entries)
+                        # FIXME: doesn't look like it's working
+                        if last_sort_key:
+                            self.all_entries = sorted(self.all_entries, key=last_sort_key, reverse=predicate == "desc")
+                    elif name_filter == "name":
+                        logging.debug("filtering by: %s", name_filter)
 
-            self.pages_count = math.ceil(self.all_entries_count / self.limit)
+                        self.all_entries = filter(lambda x: predicate.lower() in x.name.lower(),
+                                                  self.all_entries)
+                    elif name_filter == "date":
+                        logging.debug("filtering by: %s", name_filter)
 
-            self.has_previous_page = self.page_offset > 0
-            self.has_next_page = self.page < self.pages_count
+                        date_predicate = cast_date(predicate)
+                        logging.debug("date predicate: %s", date_predicate)
+                        self.all_entries = filter(lambda x: date_predicate == x.filetime,
+                                                  self.all_entries)
+                    elif name_filter == "from":
+                        logging.debug("filtering by: %s", name_filter)
 
-            self.url_previous_page = ""
-            self.url_next_page = ""
+                        date_predicate = cast_date(predicate)
+                        logging.debug("date predicate: %s", date_predicate)
+                        self.all_entries = filter(lambda x: x.filetime >= date_predicate,
+                                                  self.all_entries)
+                    elif name_filter == "to":
+                        logging.debug("filtering by: %s", name_filter)
 
-            def edit_url_qs(url, **kwargs):
-                qs = urllib.parse.parse_qs(url[4])
-                qs.update(**kwargs)
+                        # FIXME: to:2021 will set the predicate to Jan 1st 2021 which causes lots of false negatives
+                        date_predicate = cast_date(predicate)
+                        logging.debug("date predicate: %s", date_predicate)
+                        self.all_entries = filter(lambda x: x.filetime <= date_predicate,
+                                                  self.all_entries)
+                    else:
+                        logging.error("unsupported filter: %s", name_filter)
+            except QueryError as e:
+                logging.error("couldn't parse query: %s", e)
+                # TODO: signal to the UI that the query is incorrect
 
-                return urllib.parse.urlunparse(url._replace(query=urllib.parse.urlencode(qs, doseq=True)))
+        # NOTE: filter() returns a view, and we need a subscriptable list
+        self.all_entries = list(self.all_entries)
 
-            url = urllib.parse.urlparse(request.url)
+        self.all_entries_count = len(self.all_entries)
 
-            self.url_first_page = edit_url_qs(url, page=1)
-            self.url_last_page = edit_url_qs(url, page=self.pages_count)
+        self.entries = self.all_entries[self.page_offset * self.limit:(self.page_offset + 1) * self.limit]
+        self.entries_count = len(self.entries)
 
-            if self.has_previous_page:
-                self.url_previous_page = edit_url_qs(url, page=self.page - 1)
+        self.pages_count = math.ceil(self.all_entries_count / self.limit)
 
-            if self.has_next_page:
-                self.url_next_page = edit_url_qs(url, page=self.page + 1)
+        self.has_previous_page = self.page_offset > 0
+        self.has_next_page = self.page < self.pages_count
 
-            self.url_limit = lambda x: edit_url_qs(url, limit=x, page=1)
+        self.url_previous_page = ""
+        self.url_next_page = ""
+
+        def edit_url_qs(url, **kwargs):
+            qs = urllib.parse.parse_qs(url[4])
+            qs.update(**kwargs)
+
+            return urllib.parse.urlunparse(url._replace(query=urllib.parse.urlencode(qs, doseq=True)))
+
+        url = urllib.parse.urlparse(request.url)
+
+        self.url_first_page = edit_url_qs(url, page=1)
+        self.url_last_page = edit_url_qs(url, page=self.pages_count)
+
+        if self.has_previous_page:
+            self.url_previous_page = edit_url_qs(url, page=self.page - 1)
+
+        if self.has_next_page:
+            self.url_next_page = edit_url_qs(url, page=self.page + 1)
+
+        self.url_limit = lambda x: edit_url_qs(url, limit=x, page=1)
+
+
+class MediaDatabase:
+    EXTENSIONS_IMAGE = [
+        "blp",
+        "bmp",
+        "cur",
+        "dcx",
+        "dds",
+        "dib",
+        "eps",
+        "flc",
+        "fli",
+        "fpx",
+        "ftex",
+        "gbr",
+        "gd",
+        "gif",
+        "icns",
+        "ico",
+        "im",
+        "imt",
+        "iptc",
+        "jpeg",
+        "jpg",
+        "mcidas",
+        "mic",
+        "mpo",
+        "msp",
+        "naa",
+        "pcd",
+        "pcx",
+        "pixar",
+        "png",
+        "ppm",
+        "psd",
+        "sgi",
+        "spider",
+        "tga",
+        "tiff",
+        "wal",
+        "webp",
+        "wmf",
+        "xbm",
+        "xpm",
+    ]
+
+    EXTENSIONS_VIDEO = [
+        "avchd",
+        "avi",
+        "flv",
+        "m4p",
+        "m4v",
+        "mov",
+        "mp2",
+        "mp4",
+        "mpe",
+        "mpeg",
+        "mpg",
+        "mpv",
+        "ogg",
+        "qt",
+        "swf",
+        "webm",
+        "wmv",
+    ]
 
     def __init__(self, paths, path_thumbnails):
         self.db = {}
@@ -548,11 +619,15 @@ class ImagesDatabase:
         def append_media(path_file):
             logging.info("identifying media: %s", path_file)
 
-            mimetype = magic.from_file(str(path_file), mime=True)
-            if mimetype.startswith("image/"):
+            if not path_file.suffix:
+                logging.warning("no extension, skipping")
+                return
+
+            path_extension = path_file.suffix[1:].lower()
+            if path_extension in MediaDatabase.EXTENSIONS_IMAGE:
                 logging.debug("media type identified: image")
                 ctor = Image
-            elif mimetype.startswith("video/"):
+            elif path_extension in MediaDatabase.EXTENSIONS_VIDEO:
                 logging.debug("media type identified: video")
                 ctor = Video
             else:
@@ -595,7 +670,7 @@ class MediaDatabasePlugin(object):
 
     def __init__(self, images_paths, path_thumbnails, keyword="mdb"):
         self.keyword = keyword
-        self.mdb = ImagesDatabase(images_paths, path_thumbnails)
+        self.mdb = MediaDatabase(images_paths, path_thumbnails)
 
     def setup(self, app):
         for other in app.plugins:
@@ -679,13 +754,16 @@ def main(av):
         logging.critical("No such user interface detected: %s", cli_options.user_interface)
         return 1
 
-    # FIXME: error when the directory doesn't exist already
     path_cache = pathlib.Path(cli_options.ephemerals)
     if not path_cache.is_dir():
-        path_cache = pathlib.Path(Defaults.DIR_SYS_CACHE) / Defaults.PROGRAM_NAME
-        if not path_cache.is_dir():
-            logging.critical("No cache directory detected")
-            return 1
+        try:
+            path_cache.mkdir(parents=True)
+        except Exception as e:
+            logging.warning("couldn't create the cache directory: %s", e)
+            path_cache = pathlib.Path(Defaults.DIR_SYS_CACHE) / Defaults.PROGRAM_NAME
+            if not path_cache.is_dir():
+                logging.critical("No cache directory detected")
+                return 1
 
     bottle.TEMPLATE_PATH = [path_ui / "templates"]
     bottle.app().resources = bottle.ResourceManager(str(path_ui / "static") + os.sep)

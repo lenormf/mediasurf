@@ -273,30 +273,68 @@
 
                     <div class="card rounded-0 p-1 shadow-xs">
                         <a href="${router.get_url("media_uuid", uuid_media=media.hash)}">
-                            <picture>
+                            % if media.type == "image":
+
+                            <picture class="mw-100">
                                 <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl")}" media="(min-width: 1400px)">
                                 <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="lg")}" media="(min-width: 992px)">
                                 <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="md")}" media="(min-width: 768px)">
                                 <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="sm")}" loading="lazy">
                             </picture>
+
+                            % elif media.type == "video":
+
+                            <video class="mw-100" controls muted>
+                                <source src="${router.get_url("media_uuid", uuid_media=media.hash)}">
+                            </video>
+
+                            % endif
                         </a>
 
                         <div class="card-img-overlay" style="bottom: inherit">
-                            <div class="d-flex">
-                                ## TODO: allow playing a video on the spot
-                                ## TODO: add an icon to signal the type of media (i.e. image/video)
-                                <a class="text-decoration-none link-light me-3" href="${router.get_url("media_uuid", uuid_media=media.hash)}" download="${media.path.name}">
-                                    <i class="bi bi-save"></i>
-                                </a>
+                            <div class="d-flex justify-content-between">
+                                <ul class="list-inline">
+                                    % if media.type == "image":
+
+                                    <li class="list-inline-item">
+                                        <i class="bi bi-file-image text-light"></i>
+                                    </li>
+
+                                    % elif media.type == "video":
+
+                                    <li class="list-inline-item">
+                                        <i class="bi bi-file-play-fill text-light"></i>
+                                    </li>
+
+                                    % endif
+
+                                    <li class="list-inline-item">
+                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}" download="${media.path.name}">
+                                            <i class="bi bi-save"></i>
+                                        </a>
+                                    </li>
+
+                                    <li class="list-inline-item">
+                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
 
                                 ## TODO: implement
-                                <a class="text-decoration-none link-light ms-auto me-3" href="#">
-                                    <i class="bi bi-arrow-clockwise"></i>
-                                </a>
+                                <ul class="list-inline">
+                                    <li class="list-inline-item">
+                                        <a class="text-decoration-none link-light" href="#">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </a>
+                                    </li>
 
-                                <a class="text-decoration-none link-light" href="#">
-                                    <i class="bi bi-arrow-counterclockwise"></i>
-                                </a>
+                                    <li class="list-inline-item">
+                                        <a class="text-decoration-none link-light" href="#">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </a>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
 
