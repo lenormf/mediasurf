@@ -14,7 +14,10 @@ import itertools
 import collections
 
 # TODO: version dependencies statically
+# TODO: remove PIL to only use FFmpeg?
+import magic
 import bottle
+import ffmpeg
 import PIL
 import PIL.Image
 import PIL.ExifTags
@@ -83,45 +86,45 @@ def get_static_path(path):
     return static_file(path, root=bottle.app().resources.path[0])
 
 
-@get("/image/<uuid_image>", name="image_uuid")
-def get_image_uuid(idb, uuid_image):
+@get("/media/<uuid_media>", name="media_uuid")
+def get_media_uuid(mdb, uuid_media):
     assert bottle.app().resources.path
 
-    if uuid_image not in idb.db:
+    if uuid_media not in mdb.db:
         raise HttpNotFound()
 
-    path_image = idb.db[uuid_image].path
+    path_media = mdb.db[uuid_media].path
 
-    return static_file(path_image.name, root=path_image.parent)
+    return static_file(path_media.name, root=path_media.parent)
 
 
-@get("/image/<uuid_image>/thumbnail/<breakpoint>", name="image_uuid_thumbnail")
-def get_image_uuid_thumbnail(idb, uuid_image, breakpoint):
+@get("/media/<uuid_media>/thumbnail/<breakpoint>", name="media_uuid_thumbnail")
+def get_media_uuid_thumbnail(mdb, uuid_media, breakpoint):
     assert bottle.app().resources.path
 
-    if uuid_image not in idb.db:
+    if uuid_media not in mdb.db:
         raise HttpNotFound()
     elif breakpoint not in ["sm", "md", "lg", "xl", "xxl"]:
         raise HttpBadRequest()
 
-    image = idb.db[uuid_image]
-    name_thumbnail = "%s-%s" % (image.hash, breakpoint)
-    path_thumbnail = idb.path_thumbnails / name_thumbnail
+    media = mdb.db[uuid_media]
+    name_thumbnail = "%s-%s" % (media.hash, breakpoint)
+    path_thumbnail = mdb.path_thumbnails / name_thumbnail
 
     logging.debug("path to thumbnail: %s", path_thumbnail)
 
     if not path_thumbnail.exists():
-        if not image.CreateThumbnail(breakpoint, path_thumbnail):
+        if not media.CreateThumbnail(breakpoint, path_thumbnail):
             raise HttpInternalServerError()
 
-    return static_file(name_thumbnail, root=idb.path_thumbnails)
+    return static_file(name_thumbnail, root=mdb.path_thumbnails)
 
 
 @get("/", name="index")
 @mako_view("index")
-def get_index(idb):
+def get_index(mdb):
     # NOTE: dict values are a view, not a list, which aren't subscriptable
-    page = idb.Page(list(idb.db.values()), request)
+    page = mdb.Page(list(mdb.db.values()), request)
 
     return {
         "router": new_router(),
@@ -129,10 +132,12 @@ def get_index(idb):
     }
 
 
-class ImageError(Exception): pass
+class MediaError(Exception): pass
 
 
-class Image:
+class Media:
+    FORMAT_THUMBNAIL = "webp"
+
     def __init__(self, path):
         self.path = path
         self.name = self.path.stem
@@ -142,9 +147,99 @@ class Image:
         self.tags = {}
         self.format = None
 
+    def ThumbnailResolution(self, breakpoint):
+        def scale_resolution(target_width, resolution):
+            if resolution[0] < target_width:
+                return resolution
+
+            q = resolution[0] / target_width
+
+            return (resolution[0] / q, resolution[1] / q)
+
+        resolution = self.resolution
+
+        assert resolution is not None and breakpoint in ["sm", "md", "lg", "xl", "xxl"]
+
+        if breakpoint == "sm":
+            # NOTE: under this breakpoint, all pictures are shown on their own column
+            resolution = scale_resolution(766, resolution)
+        elif breakpoint == "md":
+            if resolution[0] < resolution[1]:
+                resolution = scale_resolution(990 / 2, resolution)
+            else:
+                resolution = scale_resolution(990, resolution)
+        elif breakpoint == "lg":
+            if resolution[0] < resolution[1]:
+                resolution = scale_resolution(1398 / 3, resolution)
+            else:
+                resolution = scale_resolution(1398 / 2, resolution)
+        elif breakpoint == "xl":
+            if resolution[0] < resolution[1]:
+                resolution = scale_resolution(1920 / 4, resolution)
+            else:
+                resolution = scale_resolution(1920 / 3, resolution)
+        elif breakpoint == "xxl":
+            if resolution[0] < resolution[1]:
+                resolution = scale_resolution(2560 / 6, resolution)
+            else:
+                resolution = scale_resolution(2560 / 4, resolution)
+
+        return resolution
+
+    def CreateThumbnail(self, breakpoint, path_thumbnail, format_thumbnail=FORMAT_THUMBNAIL):
+        pass
+
+
+class Video(Media):
+    def __init__(self, path):
+        super().__init__(path)
+
+        st = self.path.stat()
+        self.filetime = datetime.datetime.fromtimestamp(st.st_ctime)
+
+        try:
+            probe = ffmpeg.probe(self.path)
+        except ffmpeg.Error as e:
+            raise MediaError("unable to open video: %s" % e.stderr)
+
+        # TODO: extract tags if any
+        meta_stream = next((stream for stream in probe["streams"] if stream["codec_type"] == "video"), None)
+        if meta_stream is None:
+            raise MediaError("no video stream in the file")
+
+        self.resolution = [meta_stream["width"], meta_stream["height"]]
+        self.format = probe["format"]["format_name"]
+
+        # TODO: factorise hashing into the parent class
+        h = hashlib.sha1()
+        h_data = "%s-%d-%d.%d-%s" % (self.name, str2int(probe["format"]["size"]), self.resolution[0], self.resolution[1], self.format)
+        h.update(h_data.encode())
+        self.hash = h.hexdigest()
+
+    def CreateThumbnail(self, breakpoint, path_thumbnail, format_thumbnail=Media.FORMAT_THUMBNAIL):
+        logging.debug("generating thumbnail for breakpoint %s: %s", breakpoint, path_thumbnail)
+
+        resolution = self.ThumbnailResolution(breakpoint)
+
+        logging.debug("target thumbnail resolution: %d / %d", *resolution)
+
+        try:
+            ffmpeg.input(self.path).filter("scale", resolution[0], -1) \
+                  .output(filename=path_thumbnail, format=format_thumbnail, vframes=1).overwrite_output() \
+                  .run(capture_stdout=True, capture_stderr=True)
+        except ffmpeg.Error as e:
+            logging.error("unable to generate thumbnail: %s", e.stderr)
+            return False
+
+        return True
+
+
+class Image(Media):
+    def __init__(self, path):
+        super().__init__(path)
+
         try:
             st = self.path.stat()
-
             self.filetime = datetime.datetime.fromtimestamp(st.st_ctime)
 
             with PIL.Image.open(self.path) as im:
@@ -162,52 +257,20 @@ class Image:
                 h.update(h_data.encode())
                 self.hash = h.hexdigest()
         except (FileNotFoundError, ValueError, TypeError, OSError, PIL.UnidentifiedImageError) as e:
-            raise ImageError("unable to open image: %s" % e)
+            raise MediaError("unable to open image: %s" % e)
 
-    def CreateThumbnail(self, breakpoint, path_thumbnail):
+    def CreateThumbnail(self, breakpoint, path_thumbnail, format_thumbnail=Media.FORMAT_THUMBNAIL):
         logging.debug("generating thumbnail for breakpoint %s: %s", breakpoint, path_thumbnail)
 
-        def scale_resolution(target_width, resolution):
-            if resolution[0] < target_width:
-                return resolution
+        resolution = self.ThumbnailResolution(breakpoint)
 
-            q = resolution[0] / target_width
-
-            return (resolution[0] / q, resolution[1] / q)
+        logging.debug("target thumbnail resolution: %d / %d", *resolution)
 
         try:
             with PIL.Image.open(self.path) as im:
-                resolution = self.resolution
-
-                if breakpoint == "sm":
-                    # NOTE: under this breakpoint, all pictures are shown on their own column
-                    resolution = scale_resolution(766, resolution)
-                elif breakpoint == "md":
-                    if resolution[0] < resolution[1]:
-                        resolution = scale_resolution(990 / 2, resolution)
-                    else:
-                        resolution = scale_resolution(990, resolution)
-                elif breakpoint == "lg":
-                    if resolution[0] < resolution[1]:
-                        resolution = scale_resolution(1398 / 3, resolution)
-                    else:
-                        resolution = scale_resolution(1398 / 2, resolution)
-                elif breakpoint == "xl":
-                    if resolution[0] < resolution[1]:
-                        resolution = scale_resolution(1920 / 4, resolution)
-                    else:
-                        resolution = scale_resolution(1920 / 3, resolution)
-                elif breakpoint == "xxl":
-                    if resolution[0] < resolution[1]:
-                        resolution = scale_resolution(2560 / 6, resolution)
-                    else:
-                        resolution = scale_resolution(2560 / 4, resolution)
-
-                logging.debug("target thumbnail resolution: %d / %d", *resolution)
-
                 im.thumbnail(size=resolution, resample=PIL.Image.LANCZOS)
 
-                im.save(path_thumbnail, format="WEBP")
+                im.save(path_thumbnail, format=format_thumbnail)
         except (ValueError, OSError) as e:
             logging.error("unable to generate thumbnail: %s", e)
             return False
@@ -482,16 +545,29 @@ class ImagesDatabase:
         self.db = {}
         self.path_thumbnails = path_thumbnails
 
-        def append_image(path_file):
-            logging.info("loading image: %s", path_file)
+        def append_media(path_file):
+            logging.info("identifying media: %s", path_file)
+
+            mimetype = magic.from_file(str(path_file), mime=True)
+            if mimetype.startswith("image/"):
+                logging.debug("media type identified: image")
+                ctor = Image
+            elif mimetype.startswith("video/"):
+                logging.debug("media type identified: video")
+                ctor = Video
+            else:
+                logging.error("unable to identify media type")
+                return
 
             try:
-                image = Image(path_file)
+                logging.info("loading media: %s", path_file)
+
+                media = ctor(path_file)
                 # NOTE: we use a hash generated by the object itself to be able to lookup thumbnails easily
-                uuid_image = image.hash
-                self.db[uuid_image] = image
-            except ImageError as e:
-                logging.error("unable to assign the image to the database: %s", e)
+                uuid_media = media.hash
+                self.db[uuid_media] = media
+            except MediaError as e:
+                logging.error("unable to assign the media to the database: %s", e)
 
         def append_directory(path_directory):
             logging.info("loading directory: %s", path_directory)
@@ -501,49 +577,50 @@ class ImagesDatabase:
 
             for path in path_directory.iterdir():
                 if path.is_file():
-                    append_image(path)
+                    append_media(path)
                 elif path.is_dir():
                     append_directory(path)
 
         for path in paths:
             path = pathlib.Path(path).resolve()
             if path.is_file():
-                append_image(path)
+                append_media(path)
             elif path.is_dir():
                 append_directory(path)
 
 
-class ImagesDatabasePlugin(object):
-    name = "images_database"
+class MediaDatabasePlugin(object):
+    name = "media_database"
     api = 2
 
-    def __init__(self, images_paths, path_thumbnails, keyword="idb"):
+    def __init__(self, images_paths, path_thumbnails, keyword="mdb"):
         self.keyword = keyword
-        self.idb = ImagesDatabase(images_paths, path_thumbnails)
+        self.mdb = ImagesDatabase(images_paths, path_thumbnails)
 
     def setup(self, app):
         for other in app.plugins:
-            if not isinstance(other, ImagesDatabasePlugin):
+            if not isinstance(other, MediaDatabasePlugin):
                 continue
 
             if other.keyword == self.keyword:
                 raise bottle.PluginError("Found another '%s' plugin with conflicting settings (non-unique keyword)." % self.name)
 
     def apply(self, callback, context):
-        conf = context.config.get(ImagesDatabasePlugin.name) or {}
+        conf = context.config.get(MediaDatabasePlugin.name) or {}
         keyword = conf.get("keyword", self.keyword)
 
         if self.keyword not in inspect.signature(callback).parameters:
             return callback
 
         def wrapper(*args, **kwargs):
-            kwargs[keyword] = self.idb
+            kwargs[keyword] = self.mdb
             return callback(*args, **kwargs)
 
         return wrapper
 
 
 class Defaults:
+    # TODO: rebrand as MediaSurf
     PROGRAM_NAME = "imageserv"
     PROGRAM_DESCRIPTION = "ImageServ image gallery"
 
@@ -602,6 +679,7 @@ def main(av):
         logging.critical("No such user interface detected: %s", cli_options.user_interface)
         return 1
 
+    # FIXME: error when the directory doesn't exist already
     path_cache = pathlib.Path(cli_options.ephemerals)
     if not path_cache.is_dir():
         path_cache = pathlib.Path(Defaults.DIR_SYS_CACHE) / Defaults.PROGRAM_NAME
@@ -621,7 +699,7 @@ def main(av):
         logging.critical("couldn't create the thumbnail directory: %s", e)
         return 1
 
-    bottle.install(ImagesDatabasePlugin(cli_options.paths, path_thumbnails))
+    bottle.install(MediaDatabasePlugin(cli_options.paths, path_thumbnails))
 
     bottle.run(host=cli_options.host, port=cli_options.port,
                debug=cli_options.debug, reloader=cli_options.debug)

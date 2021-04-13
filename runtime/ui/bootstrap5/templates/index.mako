@@ -259,9 +259,9 @@
             % if page.all_entries_count > 0:
 
             <div class="row g-1">
-                % for i, picture in enumerate(page.entries):
+                % for i, media in enumerate(page.entries):
 
-                % if picture.resolution[0] < picture.resolution[1]:
+                % if media.resolution[0] < media.resolution[1]:
 
                 <div class="col col-md-6 col-lg-4 col-xl-3 col-xxl-2">
 
@@ -272,18 +272,20 @@
                 % endif
 
                     <div class="card rounded-0 p-1 shadow-xs">
-                        <a href="${router.get_url("image_uuid", uuid_image=picture.hash)}">
+                        <a href="${router.get_url("media_uuid", uuid_media=media.hash)}">
                             <picture>
-                                <source srcset="${router.get_url("image_uuid_thumbnail", uuid_image=picture.hash, breakpoint="xxl")}" media="(min-width: 1400px)">
-                                <source srcset="${router.get_url("image_uuid_thumbnail", uuid_image=picture.hash, breakpoint="lg")}" media="(min-width: 992px)">
-                                <source srcset="${router.get_url("image_uuid_thumbnail", uuid_image=picture.hash, breakpoint="md")}" media="(min-width: 768px)">
-                                <img class="card-img-top rounded-0 border" src="${router.get_url("image_uuid_thumbnail", uuid_image=picture.hash, breakpoint="sm")}" loading="lazy">
+                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl")}" media="(min-width: 1400px)">
+                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="lg")}" media="(min-width: 992px)">
+                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="md")}" media="(min-width: 768px)">
+                                <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="sm")}" loading="lazy">
                             </picture>
                         </a>
 
                         <div class="card-img-overlay" style="bottom: inherit">
                             <div class="d-flex">
-                                <a class="text-decoration-none link-light me-3" href="${router.get_url("image_uuid", uuid_image=picture.hash)}" download="${picture.path.name}">
+                                ## TODO: allow playing a video on the spot
+                                ## TODO: add an icon to signal the type of media (i.e. image/video)
+                                <a class="text-decoration-none link-light me-3" href="${router.get_url("media_uuid", uuid_media=media.hash)}" download="${media.path.name}">
                                     <i class="bi bi-save"></i>
                                 </a>
 
@@ -306,7 +308,7 @@
                                     </th>
 
                                     <td>
-                                        ${picture.name}
+                                        ${media.name}
                                     </td>
                                 </tr>
 
@@ -316,7 +318,7 @@
                                     </th>
 
                                     <td>
-                                        ${picture.filetime.strftime("%c")}
+                                        ${media.filetime.strftime("%c")}
                                     </td>
                                 </tr>
                             </tbody>
@@ -341,14 +343,14 @@
 
                                                     <td>
                                                         <span class="badge bg-secondary">
-                                                            ${picture.format}
+                                                            ${media.format}
                                                         </span>
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
 
-                                        % if picture.tags:
+                                        % if media.tags:
 
                                         <table class="table table-striped table-sm table-responsive mb-0 mt-1">
                                             <thead>
@@ -364,7 +366,7 @@
                                             </thead>
 
                                             <tbody>
-                                                % for k, v in picture.tags.items():
+                                                % for k, v in media.tags.items():
 
                                                 <tr>
                                                     <th scope="row" class="h6 lh-base">
