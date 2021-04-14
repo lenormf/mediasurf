@@ -276,10 +276,18 @@
                             % if media.type == "image":
 
                             <picture class="mw-100">
+                                % if media.format.lower() == "gif":
+
+                                <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid", uuid_media=media.hash)}" loading="lazy">
+
+                                % else:
+
                                 <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl")}" media="(min-width: 1400px)">
                                 <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="lg")}" media="(min-width: 992px)">
                                 <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="md")}" media="(min-width: 768px)">
                                 <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="sm")}" loading="lazy">
+
+                                % endif
                             </picture>
 
                             % elif media.type == "video":
