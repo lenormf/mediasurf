@@ -284,7 +284,8 @@
 
                             % elif media.type == "video":
 
-                            <video class="mw-100" controls muted>
+                            ## FIXME: find a way to load a breakpoint-specific poster with media-queries
+                            <video class="mw-100" controls muted preload="none" poster="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl")}">
                                 <source src="${router.get_url("media_uuid", uuid_media=media.hash)}">
                             </video>
 
