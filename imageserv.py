@@ -548,6 +548,9 @@ class Page:
         self.url_limit = lambda x: edit_url_qs(url, limit=x, page=1)
 
 
+class MediaDatabaseError(Exception): pass
+
+
 class MediaDatabase:
     EXTENSIONS_IMAGE = [
         "blp",
@@ -648,25 +651,43 @@ class MediaDatabase:
     def _append_directory(self, pool, path_directory):
         logging.info("loading directory: %s", path_directory)
 
+        results = []
         for path in path_directory.iterdir():
-            if path.is_file():
-                pool.apply_async(MediaDatabase._append_media, (path,),
-                                 callback=self._append_media_done)
-            elif path.is_dir():
-                self._append_directory(pool, path)
+            results.extend(self._resolve_path(pool, path))
+
+        return results
+
+    def _resolve_path(self, pool, path):
+        logging.debug("resolving path: %s", path)
+
+        def error_callback(e):
+            raise MediaDatabaseError(e)
+
+        if path.is_file():
+            result = pool.apply_async(MediaDatabase._append_media, (path,),
+                                      callback=self._append_media_done,
+                                      error_callback=error_callback)
+            return [result]
+        elif path.is_dir():
+            return self._append_directory(pool, path)
+
+        return []
 
     def __init__(self, paths, path_thumbnails):
         self.db = {}
         self.path_thumbnails = path_thumbnails
 
+        self.paths = set((pathlib.Path(path).resolve() for path in paths))
+
         with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-            for path in paths:
-                path = pathlib.Path(path).resolve()
-                if path.is_file():
-                    pool.apply_async(MediaDatabase._append_media, (path,),
-                                     callback=self._append_media_done)
-                elif path.is_dir():
-                    self._append_directory(pool, path)
+            async_results = []
+            for path in self.paths:
+                for result in self._resolve_path(pool, path):
+                    if not result.ready():
+                        async_results.append(result)
+
+            for result in async_results:
+                result.wait()
 
 
 class MediaDatabasePlugin(object):
@@ -675,7 +696,11 @@ class MediaDatabasePlugin(object):
 
     def __init__(self, images_paths, path_thumbnails, keyword="mdb"):
         self.keyword = keyword
-        self.mdb = MediaDatabase(images_paths, path_thumbnails)
+
+        try:
+            self.mdb = MediaDatabase(images_paths, path_thumbnails)
+        except MediaDatabaseError as e:
+            raise bottle.PluginError("Unable to load media database: %s" % e)
 
     def setup(self, app):
         for other in app.plugins:
