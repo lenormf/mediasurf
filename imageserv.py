@@ -336,10 +336,10 @@ class QueryParser(collections.OrderedDict):
             pp.Suppress(":") + pp.oneOf("s n d"),
             default="s",
         )
-    )
-
-    ORDER_TOKEN = (
-        pp.Keyword("order") + pp.Suppress(":") + (pp.Keyword("asc") | pp.Keyword("desc"))
+        + pp.Optional(
+            pp.Suppress(pp.Keyword("order")) + pp.Suppress(":") + (pp.Keyword("asc") | pp.Keyword("desc")),
+            default="desc",
+        )
     )
 
     SEARCH_TOKEN = (
@@ -365,7 +365,7 @@ class QueryParser(collections.OrderedDict):
     )
 
     # TODO: order should only be used right after sort
-    QUERY_TOKEN = pp.Group(SORT_TOKEN | ORDER_TOKEN | SEARCH_TOKEN | FROM_TOKEN | TO_TOKEN)
+    QUERY_TOKEN = pp.Group(SORT_TOKEN | SEARCH_TOKEN | FROM_TOKEN | TO_TOKEN)
 
     GRAMMAR = pp.Dict(pp.OneOrMore(QUERY_TOKEN))
 
@@ -389,7 +389,7 @@ class Page:
                 return int(s)
             except ValueError:
                 logging.warning("unable to cast string as integer: %s", s)
-            return s
+            return 0
 
         def cast_date(s):
             for D in QueryParser.DATETIME().streamline().exprs:
@@ -400,14 +400,14 @@ class Page:
                 except pp.ParseException:
                     pass
             logging.warning("unable to cast string as date: %s", s)
-            return s
+            return datetime.datetime.fromtimestamp(0)
 
         def cast_exif_date(s):
             try:
                 return datetime.datetime.strptime(s, "%Y:%m:%d %H:%M:%S")
             except ValueError:
                 logging.warning("unable to cast string as date: %s", s)
-            return s
+            return datetime.datetime.fromtimestamp(0)
 
         self.page = str2int(request.query.get("page"))
         if self.page is None or self.page < 1:
@@ -432,74 +432,73 @@ class Page:
 
                 logging.info("search query: %s", q)
 
-                last_sort_key = None
+                value_casts = {
+                    "s": str,
+                    "n": cast_integer,
+                    "d": cast_date,
+                }
+
                 for name_filter, predicate in q.items():
                     logging.debug("filter: %s", name_filter)
                     logging.debug("predicate: %s", predicate)
 
                     if name_filter == "tag":
-                        logging.debug("filtering by: %s", name_filter)
+                        logging.debug("filtering by tag: %s", predicate)
 
                         self.all_entries = filter(lambda x: predicate.lower() in [t.lower() for t in x.tags.keys()],
                                                   self.all_entries)
                     elif name_filter == "sort":
-                        logging.debug("filtering by: %s", name_filter)
+                        key = predicate[0]
 
-                        key_sort = predicate[0][0]
-
-                        if key_sort == "tag":
-                            cast = predicate[0][2]
+                        if key == "tag":
+                            cast = predicate[2]
+                            order = predicate[3]
                         else:
                             cast = predicate[1]
+                            order = predicate[2]
 
-                        f_cast = {
-                            "s": str,
-                            "n": cast_integer,
-                            "d": cast_date,
-                        }[cast]
+                        logging.debug("sorting by: %s (%s, %s)", key, cast, order)
 
-                        if key_sort == "tag":
+                        f_cast = value_casts[cast]
+
+                        if key == "tag":
                             if cast == "d":
                                 # NOTE: the datetimes in EXIF tags have a standard format
                                 f_cast = cast_exif_date
-                            last_sort_key = lambda x: f_cast(x.tags.get(predicate[0][1], ""))
                             self.all_entries = sorted(self.all_entries,
-                                                      key=last_sort_key)
-                        elif key_sort == "name":
-                            last_sort_key = lambda x: lambda x: f_cast(x.name)
+                                                      key=lambda x: f_cast(x.tags.get(predicate[1], "")),
+                                                      reverse=order == "desc")
+                        elif key == "name":
                             self.all_entries = sorted(self.all_entries,
-                                                      key=last_sort_key)
-                        elif key_sort == "date":
-                            last_sort_key = lambda x: f_cast(x.filetime)
+                                                      key=lambda x: f_cast(x.name),
+                                                      reverse=order == "desc")
+                        elif key == "date":
                             self.all_entries = sorted(self.all_entries,
-                                                      key=last_sort_key)
-                    elif name_filter == "order":
-                        logging.debug("filtering by: %s", name_filter)
-
-                        # FIXME: doesn't look like it's working
-                        if last_sort_key:
-                            self.all_entries = sorted(self.all_entries, key=last_sort_key, reverse=predicate == "desc")
+                                                      key=lambda x: f_cast(x.filetime),
+                                                      reverse=order == "desc")
+                        else:
+                            logging.error("sorting predicate unsupported: %s", name)
                     elif name_filter == "name":
-                        logging.debug("filtering by: %s", name_filter)
+                        logging.debug("filtering by name: %s", predicate)
 
                         self.all_entries = filter(lambda x: predicate.lower() in x.name.lower(),
                                                   self.all_entries)
                     elif name_filter == "date":
-                        logging.debug("filtering by: %s", name_filter)
+                        logging.debug("filtering by date: %s", predicate)
 
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
                         self.all_entries = filter(lambda x: date_predicate == x.filetime,
                                                   self.all_entries)
                     elif name_filter == "from":
-                        logging.debug("filtering by: %s", name_filter)
+                        logging.debug("filtering by date, from: %s", predicate)
 
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
                         self.all_entries = filter(lambda x: x.filetime >= date_predicate,
                                                   self.all_entries)
                     elif name_filter == "to":
-                        logging.debug("filtering by: %s", name_filter)
+                        logging.debug("filtering by date, to: %s", predicate)
 
                         # FIXME: to:2021 will set the predicate to Jan 1st 2021 which causes lots of false negatives
                         date_predicate = cast_date(predicate)
