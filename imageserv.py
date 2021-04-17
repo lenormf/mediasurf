@@ -473,8 +473,9 @@ class Page:
                                                       key=lambda x: f_cast(x.name),
                                                       reverse=order == "desc")
                         elif key == "date":
+                            # NOTE: we don't cast here because there's no use serialising a datetime object
                             self.all_entries = sorted(self.all_entries,
-                                                      key=lambda x: f_cast(x.filetime),
+                                                      key=lambda x: x.filetime,
                                                       reverse=order == "desc")
                         else:
                             logging.error("sorting predicate unsupported: %s", name)
