@@ -3,6 +3,7 @@
 import os
 import sys
 import math
+import enum
 import urllib
 import hashlib
 import pathlib
@@ -206,7 +207,7 @@ class Video(Media):
         self.type = "video"
 
         st = self.path.stat()
-        self.filetime = datetime.datetime.fromtimestamp(st.st_ctime)
+        self.filetime = DatetimeWrapper(dt=datetime.datetime.fromtimestamp(st.st_ctime))
 
         try:
             probe = ffmpeg.probe(self.path)
@@ -249,7 +250,7 @@ class Image(Media):
 
         try:
             st = self.path.stat()
-            self.filetime = datetime.datetime.fromtimestamp(st.st_ctime)
+            self.filetime = DatetimeWrapper(dt=datetime.datetime.fromtimestamp(st.st_ctime))
 
             with PIL.Image.open(self.path) as im:
                 self.resolution = im.size
@@ -284,14 +285,100 @@ class Image(Media):
         return True
 
 
+class DateHints(enum.Flag):
+    YEAR = enum.auto()
+    MONTH = enum.auto()
+    DAY = enum.auto()
+    HOUR = enum.auto()
+    MINUTE = enum.auto()
+    SECOND = enum.auto()
+    MICROSECOND = enum.auto()
+
+
+class DatetimeWrapper(datetime.datetime):
+    def __new__(cls, dt, hints=DateHints.YEAR | DateHints.MONTH | DateHints.DAY | DateHints.HOUR | DateHints.MINUTE | DateHints.SECOND | DateHints.MICROSECOND):
+        # NOTE: at some point the instance is re-constructed with a byte array
+        if isinstance(dt, (bytes, str)):
+            result = super().__new__(cls, dt)
+        elif isinstance(dt, datetime.datetime):
+            result = super().__new__(cls, dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond, dt.tzinfo, fold=dt.fold)
+        result.hints = hints
+        return result
+
+    def __str__(self):
+        return "%s, %s" % (super().__str__(), self.hints)
+
+    def __eq__(self, other):
+        values = []
+        for i in [i for i in list(DateHints) if i in self.hints]:
+            values.append((getattr(self, i.name.lower()), getattr(other, i.name.lower())))
+
+        logging.debug("equal date values: %s", values)
+
+        return next((True for a, b in values if a != b), None) is None
+
+    # NOTE: the following operators follow the date formats implemented in QueryParser
+    def __le__(self, other):
+        is_year = DateHints.YEAR in self.hints \
+                  and DateHints.YEAR in other.hints
+        is_year_month = is_year \
+                        and DateHints.MONTH in self.hints \
+                        and DateHints.MONTH in other.hints
+        is_date = is_year_month \
+                  and DateHints.DAY in self.hints \
+                  and DateHints.DAY in other.hints
+
+        if is_date:
+            return self.date() <= other.date()
+        elif is_year_month:
+            return self.year < other.year \
+                   or (self.year == other.year and self.month <= other.month)
+        elif is_year:
+            return self.year <= other.year
+        else:
+            logging.warning("unsupported combination of hints: %s/%s", self.hints, other.hints)
+
+    # FIXME: factorise the operators
+    def __ge__(self, other):
+        is_year = DateHints.YEAR in self.hints \
+                  and DateHints.YEAR in other.hints
+        is_year_month = is_year \
+                        and DateHints.MONTH in self.hints \
+                        and DateHints.MONTH in other.hints
+        is_date = is_year_month \
+                  and DateHints.DAY in self.hints \
+                  and DateHints.DAY in other.hints
+
+        if is_date:
+            return self.date() >= other.date()
+        elif is_year_month:
+            return self.year > other.year \
+                   or (self.year == other.year and self.month >= other.month)
+        elif is_year:
+            return self.year >= other.year
+        else:
+            logging.warning("unsupported combination of hints: %s/%s", self.hints, other.hints)
+
+
 class Date(pp.ParserElement):
     DATE_FORMAT = "%a %b %d %H:%M:%S %Y"
+    DATE_FORMAT_HINTS = (
+        DateHints.YEAR
+        | DateHints.MONTH
+        | DateHints.DAY
+        | DateHints.HOUR
+        | DateHints.MINUTE
+        | DateHints.SECOND
+    )
+    STR_DELIM = " "
     MAX_DELIM = 5
 
-    def __init__(self, format=DATE_FORMAT, max_delim=MAX_DELIM):
+    def __init__(self, format=DATE_FORMAT, format_hints=DATE_FORMAT_HINTS, delim=STR_DELIM, max_delim=MAX_DELIM):
         super().__init__()
 
         self.format = format or Date.DATE_FORMAT
+        self.format_hints = format_hints or Date.DATE_FORMAT_HINTS
+        self.delim = delim or Date.STR_DELIM
         self.max_delim = max_delim
 
         self.name = "Date"
@@ -308,10 +395,10 @@ class Date(pp.ParserElement):
         if self._match_datetime(instring[loc:], self.format):
             return len(instring), instring[loc:]
 
-        max_delim = max(self.format.count(" "), self.max_delim)
+        max_delim = max(self.format.count(self.delim), self.max_delim)
         previous_delim = loc - 1
         for i in range(max_delim):
-            previous_delim = instring.find(" ", previous_delim + 1)
+            previous_delim = instring.find(self.delim, previous_delim + 1)
             if previous_delim < 0:
                 raise pp.ParseException(instring, loc, self.errmsg, self)
 
@@ -356,7 +443,11 @@ class QueryParser(collections.OrderedDict):
 
     # TODO: support quoted %c datetimes
     # TODO: support quoted datetimes with hour/minute/second individually
-    DATETIME = Date("%Y/%m/%d") | Date("%Y/%m") | Date("%Y")
+    DATETIME = (
+        Date("%Y/%m/%d", DateHints.YEAR | DateHints.MONTH | DateHints.DAY)
+        | Date("%Y/%m", DateHints.YEAR | DateHints.MONTH)
+        | Date("%Y", DateHints.YEAR)
+    )
     FROM_TOKEN = (
         pp.Keyword("from") + pp.Suppress(":") + DATETIME
     )
@@ -396,7 +487,7 @@ class Page:
                 try:
                     d = D()
                     d.parseString(s, parseAll=True)
-                    return datetime.datetime.strptime(s, d.format)
+                    return DatetimeWrapper(dt=datetime.datetime.strptime(s, d.format), hints=d.format_hints)
                 except pp.ParseException:
                     pass
             logging.warning("unable to cast string as date: %s", s)
@@ -501,7 +592,6 @@ class Page:
                     elif name_filter == "to":
                         logging.debug("filtering by date, to: %s", predicate)
 
-                        # FIXME: to:2021 will set the predicate to Jan 1st 2021 which causes lots of false negatives
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
                         self.all_entries = list(filter(lambda x: x.filetime <= date_predicate,
