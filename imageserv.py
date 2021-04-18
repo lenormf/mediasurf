@@ -445,8 +445,8 @@ class Page:
                     if name_filter == "tag":
                         logging.debug("filtering by tag: %s", predicate)
 
-                        self.all_entries = filter(lambda x: predicate.lower() in [t.lower() for t in x.tags.keys()],
-                                                  self.all_entries)
+                        self.all_entries = list(filter(lambda x: predicate.lower() in [t.lower() for t in x.tags.keys()],
+                                                  self.all_entries))
                     elif name_filter == "sort":
                         key = predicate[0]
 
@@ -482,38 +482,35 @@ class Page:
                     elif name_filter == "name":
                         logging.debug("filtering by name: %s", predicate)
 
-                        self.all_entries = filter(lambda x: predicate.lower() in x.name.lower(),
-                                                  self.all_entries)
+                        self.all_entries = list(filter(lambda x: predicate.lower() in x.name.lower(),
+                                                  self.all_entries))
                     elif name_filter == "date":
                         logging.debug("filtering by date: %s", predicate)
 
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
-                        self.all_entries = filter(lambda x: date_predicate == x.filetime,
-                                                  self.all_entries)
+                        self.all_entries = list(filter(lambda x: date_predicate == x.filetime,
+                                                  self.all_entries))
                     elif name_filter == "from":
                         logging.debug("filtering by date, from: %s", predicate)
 
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
-                        self.all_entries = filter(lambda x: x.filetime >= date_predicate,
-                                                  self.all_entries)
+                        self.all_entries = list(filter(lambda x: x.filetime >= date_predicate,
+                                                  self.all_entries))
                     elif name_filter == "to":
                         logging.debug("filtering by date, to: %s", predicate)
 
                         # FIXME: to:2021 will set the predicate to Jan 1st 2021 which causes lots of false negatives
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
-                        self.all_entries = filter(lambda x: x.filetime <= date_predicate,
-                                                  self.all_entries)
+                        self.all_entries = list(filter(lambda x: x.filetime <= date_predicate,
+                                                  self.all_entries))
                     else:
                         logging.error("unsupported filter: %s", name_filter)
             except QueryError as e:
                 logging.error("couldn't parse query: %s", e)
                 # TODO: signal to the UI that the query is incorrect
-
-        # NOTE: filter() returns a view, and we need a subscriptable list
-        self.all_entries = list(self.all_entries)
 
         self.all_entries_count = len(self.all_entries)
 
