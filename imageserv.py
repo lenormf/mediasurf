@@ -478,7 +478,7 @@ class Page:
                                                       key=lambda x: x.filetime,
                                                       reverse=order == "desc")
                         else:
-                            logging.error("sorting predicate unsupported: %s", name)
+                            logging.error("sorting predicate unsupported: %s", name_filter)
                     elif name_filter == "name":
                         logging.debug("filtering by name: %s", predicate)
 
