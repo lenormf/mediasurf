@@ -455,7 +455,6 @@ class QueryParser(collections.OrderedDict):
         pp.Keyword("to") + pp.Suppress(":") + DATETIME
     )
 
-    # TODO: order should only be used right after sort
     QUERY_TOKEN = pp.Group(SORT_TOKEN | SEARCH_TOKEN | FROM_TOKEN | TO_TOKEN)
 
     GRAMMAR = pp.Dict(pp.OneOrMore(QUERY_TOKEN))
