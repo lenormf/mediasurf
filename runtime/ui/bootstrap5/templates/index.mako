@@ -264,35 +264,15 @@
                                     </h6>
                                 </li>
 
+                                % for i in [10, 25, 50, 100, 500]:
+
                                 <li>
-                                    <a class="dropdown-item ${"active" if page.limit == 10 else ""}" href="${page.url_limit(10)}">
-                                        10
+                                    <a class="dropdown-item ${"active" if page.limit == i else ""}" href="${page.url_limit(i)}">
+                                        ${i}
                                     </a>
                                 </li>
 
-                                <li>
-                                    <a class="dropdown-item ${"active" if page.limit == 25 else ""}" href="${page.url_limit(25)}">
-                                        25
-                                    </a>
-                                </li>
-
-                                <li>
-                                    <a class="dropdown-item ${"active" if page.limit == 50 else ""}" href="${page.url_limit(50)}">
-                                        50
-                                    </a>
-                                </li>
-
-                                <li>
-                                    <a class="dropdown-item ${"active" if page.limit == 100 else ""}" href="${page.url_limit(100)}">
-                                        100
-                                    </a>
-                                </li>
-
-                                <li>
-                                    <a class="dropdown-item ${"active" if page.limit == 500 else ""}" href="${page.url_limit(500)}">
-                                        500
-                                    </a>
-                                </li>
+                                % endfor
                             </ul>
                         </li>
 
