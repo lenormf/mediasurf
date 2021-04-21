@@ -48,51 +48,32 @@
                 </button>
 
                 <div class="collapse navbar-collapse justify-content-between" id="navbarSupportedContent">
-                    <form class="mb-2 mb-lg-0" method="GET" action="${router.current_url}" id="searchForm">
-                        <div class="input-group input-group-sm">
-                            <button class="btn btn-light" type="button" id="searchFormReset">
-                                <i class="bi bi-x"></i>
-                            </button>
+                    <ul class="navbar-nav mb-2 mb-lg-0">
+                        <li class="nav-item mb-2 mb-lg-0 me-lg-2">
+                            <form method="GET" action="${router.current_url}" id="searchForm">
+                                <div class="input-group input-group-sm">
+                                    <button class="btn btn-outline-light" type="button" id="searchFormReset">
+                                        <i class="bi bi-x"></i>
+                                    </button>
 
-                            <input class="form-control" type="text" name="search" value="${page.search_query or ""}" placeholder="tag, date, name…">
+                                    <input class="form-control" type="text" name="search" value="${page.search_query or ""}" placeholder="tag, date, name…">
 
-                            <button class="btn btn-primary">
-                                <i class="bi bi-search"></i>
-                                search
-                            </button>
-                        </div>
-                    </form>
+                                    <button class="btn btn-primary">
+                                        <i class="bi bi-search"></i>
+                                        search
+                                    </button>
+                                </div>
+                            </form>
+                        </li>
 
-                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-% if False:
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSort" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <li class="nav-item dropdown mb-2 mb-lg-0 me-lg-2">
+                            <a class="btn btn-sm btn-outline-secondary dropdown-toggle" href="#" id="navbarDropdownSort" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-arrow-down-up"></i>
                                 sort
                             </a>
 
                             ## NOTE: the minimum width accomodates the grouped input form
-                            <ul class="dropdown-menu shadow-sm" aria-labelledby="navbarDropdownSort" style="min-width: 22rem">
-                                <li>
-                                    <h6 class="dropdown-header">
-                                        by date
-                                    </h6>
-                                </li>
-
-                                <li>
-                                    <a class="dropdown-item ${"active" if page.sort_method == "date_asc" else ""}" href="${page.url_sort_date_asc}">
-                                        <i class="bi bi-sort-numeric-down"></i>
-                                        ascending
-                                    </a>
-                                </li>
-
-                                <li>
-                                    <a class="dropdown-item ${"active" if page.sort_method == "date_desc" else ""}" href="${page.url_sort_date_desc}">
-                                        <i class="bi bi-sort-numeric-down-alt"></i>
-                                        descending
-                                    </a>
-                                </li>
-
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-sm" aria-labelledby="navbarDropdownSort" style="min-width: 22rem">
                                 <li>
                                     <h6 class="dropdown-header">
                                         by name
@@ -100,15 +81,35 @@
                                 </li>
 
                                 <li>
-                                    <a class="dropdown-item ${"active" if page.sort_method == "name_asc" else ""}" href="${page.url_sort_name_asc}">
+                                    <a class="dropdown-item" href="javascript:appendSearch('sort:name order:asc')">
                                         <i class="bi bi-sort-alpha-down"></i>
                                         ascending
                                     </a>
                                 </li>
 
                                 <li>
-                                    <a class="dropdown-item ${"active" if page.sort_method == "name_desc" else ""}" href="${page.url_sort_name_desc}">
+                                    <a class="dropdown-item" href="javascript:appendSearch('sort:name order:desc')">
                                         <i class="bi bi-sort-alpha-down-alt"></i>
+                                        descending
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        by date
+                                    </h6>
+                                </li>
+
+                                <li>
+                                    <a class="dropdown-item" href="javascript:appendSearch('sort:date order:asc')">
+                                        <i class="bi bi-sort-numeric-down"></i>
+                                        ascending
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <a class="dropdown-item" href="javascript:appendSearch('sort:date order:desc')">
+                                        <i class="bi bi-sort-numeric-down-alt"></i>
                                         descending
                                     </a>
                                 </li>
@@ -120,7 +121,7 @@
                                 </li>
 
                                 <li class="px-3 py-1">
-                                    <form method="GET" action="${router.current_url}" id="sortTagsForm">
+                                    <form id="sortTagsForm">
                                         <div class="input-group input-group-sm">
                                             <select class="form-select" id="sortTagsName" required>
                                                 <option value="" selected>Pick a tag</option>
@@ -146,10 +147,101 @@
                                                 </label>
                                             </div>
 
-                                            <input type="hidden" name="sort" id="sortTagsSort">
+                                            <button class="btn btn-secondary">
+                                                apply
+                                            </button>
+                                        </div>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
 
-                                            <button class="btn btn-primary">
-                                                sort
+                        <li class="nav-item dropdown">
+                            <a class="btn btn-sm btn-outline-secondary dropdown-toggle" href="#" id="navbarDropdownFilter" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-filter"></i>
+                                filter
+                            </a>
+
+                            ## NOTE: the minimum width accomodates the grouped input form
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-sm" aria-labelledby="navbarDropdownFilter" style="min-width: 22rem">
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        by name
+                                    </h6>
+                                </li>
+
+                                <li class="px-3 py-1">
+                                    <form id="filterNameForm">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" id="filterNameInput" placeholder="e.g. IMG_" required>
+
+                                            <button class="btn btn-secondary">
+                                                apply
+                                            </button>
+                                        </div>
+                                    </form>
+                                </li>
+
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        by date
+                                    </h6>
+                                </li>
+
+                                <li class="px-3 py-1">
+                                    <form id="filterDateForm">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" id="filterDateInput" placeholder="e.g. 2010/12/31" required>
+
+                                            <button class="btn btn-secondary">
+                                                apply
+                                            </button>
+                                        </div>
+                                    </form>
+                                </li>
+
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        by date range
+                                    </h6>
+                                </li>
+
+                                <li class="px-3 py-1">
+                                    <form id="filterDateRangeForm">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" id="filterDateFromInput" placeholder="e.g. 2010/12/31">
+                                            <input type="text" class="form-control" id="filterDateToInput" placeholder="e.g. 2010/12/31">
+
+                                            <button class="btn btn-secondary">
+                                                apply
+                                            </button>
+                                        </div>
+                                    </form>
+                                </li>
+
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        by tag
+                                    </h6>
+                                </li>
+
+                                <li class="px-3 py-1">
+                                    <form id="filterTagsForm">
+                                        <div class="input-group input-group-sm">
+                                            <select class="form-select" id="filterTagsName" required>
+                                                <option value="" selected>Pick a tag</option>
+
+                                                % for tag_name in page.tag_sort_keys:
+
+                                                <option value="${tag_name}">${tag_name}</option>
+
+                                                % endfor
+                                            </select>
+
+                                            <input type="text" class="form-control" id="filterTagsValueInput" placeholder="e.g. Nokia" required>
+
+                                            <button class="btn btn-secondary">
+                                                apply
                                             </button>
                                         </div>
                                     </form>
@@ -325,6 +417,7 @@
                                     </li>
 
                                     <li class="list-inline-item">
+                                        ## FIXME: open in a new window?
                                         <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}">
                                             <i class="bi bi-box-arrow-up-right"></i>
                                         </a>
@@ -461,27 +554,89 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.min.js"></script>
         <script>
-/*
-            const sortTagsForm = document.getElementById("sortTagsForm");
+            const searchFormInput = document.querySelector('#searchForm input[name="search"]'),
+                  searchFormReset = document.getElementById("searchFormReset"),
+                  filterTagsForm = document.getElementById("filterTagsForm"),
+                  filterNameForm = document.getElementById("filterNameForm"),
+                  filterDateForm = document.getElementById("filterDateForm"),
+                  sortTagsForm = document.getElementById("sortTagsForm");
+
+            searchFormReset.onclick = function () {
+                searchFormInput.value = "";
+            }
+
+            window.appendSearch = function (query) {
+                searchFormInput.value += " " + query;
+            }
+
+            filterTagsForm.onsubmit = function () {
+                const filterTagsName = document.getElementById("filterTagsName"),
+                      filterTagsValueInput = document.getElementById("filterTagsValueInput");
+                if (filterTagsValueInput.value) {
+                    const filter_has_space = filterTagsValueInput.value.indexOf(" ") > -1;
+                    appendSearch("tag:" + filterTagsName.value \
+                                 + ":"
+                                 + (filter_has_space ? '"' + filterTagsValueInput.value + '"' : filterTagsValueInput.value));
+                    filterTagsForm.reset();
+                }
+                return false;
+            }
+
+            filterNameForm.onsubmit = function () {
+                const filterNameInput = document.getElementById("filterNameInput");
+                if (filterNameInput.value) {
+                    const filter_has_space = filterNameInput.value.indexOf(" ") > -1;
+                    appendSearch("name:" \
+                                 + (filter_has_space ? '"' + filterNameInput.value + '"' : filterNameInput.value));
+                    filterNameForm.reset();
+                }
+                return false;
+            }
+
+            filterDateForm.onsubmit = function () {
+                const filterDateInput = document.getElementById("filterDateInput");
+                if (filterDateInput.value) {
+                    const filter_has_space = filterDateInput.value.indexOf(" ") > -1;
+                    appendSearch("date:" \
+                                 + (filter_has_space ? '"' + filterDateInput.value + '"' : filterDateInput.value));
+                    filterDateForm.reset();
+                }
+                return false;
+            }
+
+            filterDateRangeForm.onsubmit = function () {
+                const filterDateFromInput = document.getElementById("filterDateFromInput");
+                if (filterDateFromInput.value) {
+                    const filter_has_space = filterDateFromInput.value.indexOf(" ") > -1;
+                    appendSearch("from:" \
+                                 + (filter_has_space ? '"' + filterDateFromInput.value + '"' : filterDateFromInput.value));
+                }
+
+                const filterDateToInput = document.getElementById("filterDateToInput");
+                if (filterDateToInput.value) {
+                    const filter_has_space = filterDateToInput.value.indexOf(" ") > -1;
+                    appendSearch("to:" \
+                                 + (filter_has_space ? '"' + filterDateToInput.value + '"' : filterDateToInput.value));
+                }
+
+                if (filterDateFromInput.value || filterDateToInput.value) {
+                    filterDateRangeForm.reset();
+                }
+
+                return false;
+            }
+
             sortTagsForm.onsubmit = function () {
                 const sortTagsName = document.getElementById("sortTagsName"),
                       sortTagsCast = document.getElementById("sortTagsCast"),
-                      sortTagsAsc = document.getElementById("sortTagsAsc"),
-                      sortTagsSort = document.getElementById("sortTagsSort");
+                      sortTagsAsc = document.getElementById("sortTagsAsc");
                 if (sortTagsName.value) {
-                    sortTagsSort.value = "tag:" + sortTagsName.value;
-                    sortTagsSort.value += ":" + (sortTagsAsc.checked ? "asc" : "desc");
-                    sortTagsSort.value += ":" + (sortTagsCast.value ? sortTagsCast.value : "s");
+                    appendSearch("sort:tag:" + sortTagsName.value \
+                                 + ":" + (sortTagsCast.value ? sortTagsCast.value : "s") \
+                                 + " order:" + (sortTagsAsc.checked ? "asc" : "desc"));
+                    sortTagsForm.reset();
                 }
-                return true;
-            }
-*/
-
-            const searchFormReset = document.getElementById("searchFormReset");
-            searchFormReset.onclick = function () {
-                const searchFormInput = document.querySelector('#searchForm input[name="search"]');
-
-                searchFormInput.value = "";
+                return false;
             }
         </script>
     </body>

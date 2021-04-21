@@ -429,6 +429,7 @@ class QueryParser(collections.OrderedDict):
         )
     )
 
+    # FIXME: tag search is not implemented
     SEARCH_TOKEN = (
         (
             (pp.Keyword("name") | pp.Keyword("date"))
