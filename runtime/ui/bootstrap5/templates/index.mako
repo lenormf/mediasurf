@@ -397,8 +397,7 @@
                                     </li>
 
                                     <li class="list-inline-item">
-                                        ## FIXME: open in a new window?
-                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}">
+                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}" target="_blank">
                                             <i class="bi bi-box-arrow-up-right"></i>
                                         </a>
                                     </li>
