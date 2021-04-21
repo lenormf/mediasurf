@@ -156,15 +156,16 @@
                                 </li>
                             </ul>
                         </li>
-% endif
+                    </ul>
 
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownSort" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-list-ol"></i>
                                 pagination
                             </a>
 
-                            <ul class="dropdown-menu shadow-sm" aria-labelledby="navbarDropdownSort">
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-sm" aria-labelledby="navbarDropdownSort">
                                 <li>
                                     <h6 class="dropdown-header">
                                         number of items per page
