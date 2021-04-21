@@ -299,7 +299,7 @@
 
                             % endif
 
-                            ${page.page_offset * page.limit + 1} — ${page.page_offset * page.limit + page.entries_count} of ${page.all_entries_count}
+                            ${page.page_offset * page.limit + (1 if page.all_entries_count > 0 else 0)} — ${page.page_offset * page.limit + page.entries_count} of ${page.all_entries_count}
 
                             % if page.has_next_page:
 
