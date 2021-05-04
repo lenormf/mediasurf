@@ -456,7 +456,12 @@ class QueryParser(collections.OrderedDict):
         pp.Keyword("to") + pp.Suppress(":") + DATETIME
     )
 
-    QUERY_TOKEN = pp.Group(SORT_TOKEN | SEARCH_TOKEN | FROM_TOKEN | TO_TOKEN)
+    TYPE_TOKEN = (
+        pp.Keyword("type") + pp.Suppress(":")
+        + (pp.Keyword("image") | pp.Keyword("video"))
+    )
+
+    QUERY_TOKEN = pp.Group(SORT_TOKEN | SEARCH_TOKEN | FROM_TOKEN | TO_TOKEN | TYPE_TOKEN)
 
     GRAMMAR = pp.Dict(pp.OneOrMore(QUERY_TOKEN))
 
@@ -595,6 +600,11 @@ class Page:
                         date_predicate = cast_date(predicate)
                         logging.debug("date predicate: %s", date_predicate)
                         self.all_entries = list(filter(lambda x: x.filetime <= date_predicate,
+                                                  self.all_entries))
+                    elif name_filter == "type":
+                        logging.debug("filtering by filetype: %s", predicate)
+                        class_filter = Image if predicate == "image" else Video
+                        self.all_entries = list(filter(lambda x: isinstance(x, class_filter),
                                                   self.all_entries))
                     else:
                         logging.error("unsupported filter: %s", name_filter)
