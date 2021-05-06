@@ -416,7 +416,7 @@ class QueryError(Exception): pass
 
 class QueryParser(collections.OrderedDict):
     TAG_TOKEN = (
-        pp.Keyword("tag") + pp.Suppress(":") + pp.MatchFirst(map(pp.CaselessKeyword, PIL.ExifTags.TAGS.values()))
+        pp.Keyword("tag") + pp.Suppress(":") + pp.Word(pp.alphas, pp.alphanums + "_")
     )
 
     SORT_TOKEN = (
@@ -435,12 +435,20 @@ class QueryParser(collections.OrderedDict):
     # FIXME: tag search is not implemented
     SEARCH_TOKEN = (
         (
-            (pp.Keyword("name") | pp.Keyword("date"))
+            (pp.Keyword("name") | pp.Keyword("date") | TAG_TOKEN)
             + pp.Suppress(":")
             + (pp.Word(pp.printables)
                | pp.dblQuotedString().setParseAction(pp.removeQuotes)
                | pp.sglQuotedString().setParseAction(pp.removeQuotes))
-        ) | TAG_TOKEN
+        ) | (
+            TAG_TOKEN
+            + pp.Optional(
+                pp.Suppress(":")
+                + (pp.Word(pp.printables)
+                   | pp.dblQuotedString().setParseAction(pp.removeQuotes)
+                   | pp.sglQuotedString().setParseAction(pp.removeQuotes))
+            )
+        )
     )
 
     # TODO: date, from, to should be able to grab dates in EXIF tags
@@ -542,10 +550,14 @@ class Page:
                     logging.debug("predicate: %s", predicate)
 
                     if name_filter == "tag":
-                        logging.debug("filtering by tag: %s", predicate)
+                        if isinstance(predicate, str):
+                            logging.debug("filtering by tag: %s", predicate)
 
-                        self.all_entries = list(filter(lambda x: predicate.lower() in [t.lower() for t in x.tags.keys()],
-                                                  self.all_entries))
+                            self.all_entries = list(filter(lambda x: predicate in x.tags, self.all_entries))
+                        else:
+                            logging.debug("filtering by tag and value: %s", predicate)
+
+                            self.all_entries = list(filter(lambda x: str(x.tags.get(predicate[0], "")) == predicate[1], self.all_entries))
                     elif name_filter == "sort":
                         key = predicate[0]
 
