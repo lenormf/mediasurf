@@ -214,13 +214,16 @@ class Video(Media):
         except ffmpeg.Error as e:
             raise MediaError("unable to open video: %s" % e.stderr)
 
-        # TODO: extract tags if any
         meta_stream = next((stream for stream in probe["streams"] if stream["codec_type"] == "video"), None)
         if meta_stream is None:
             raise MediaError("no video stream in the file")
 
         self.resolution = [meta_stream["width"], meta_stream["height"]]
         self.format = probe["format"]["format_name"]
+
+        for stream in sorted(probe["streams"], key=lambda x: x["index"], reverse=True):
+            self.tags.update(stream.get("tags", {}))
+        self.tags.update(probe["format"].get("tags", {}))
 
         self.hash = self._hash(self.name, str2int(probe["format"]["size"]), self.resolution[0], self.resolution[1], self.format)
 
