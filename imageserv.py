@@ -699,6 +699,7 @@ class MediaDatabase:
         "flv",
         "m4p",
         "m4v",
+        "mkv",
         "mov",
         "mp2",
         "mp4",
