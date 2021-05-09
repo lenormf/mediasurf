@@ -335,11 +335,11 @@
 
                 % if media.resolution[0] < media.resolution[1]:
 
-                <div class="col col-md-6 col-lg-4 col-xl-3 col-xxl-2">
+                <div class="col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2">
 
                 % else:
 
-                <div class="col col-md-12 col-lg-6 col-xl-4 col-xxl-3">
+                <div class="col-12 col-md-12 col-lg-6 col-xl-4 col-xxl-3">
 
                 % endif
 
