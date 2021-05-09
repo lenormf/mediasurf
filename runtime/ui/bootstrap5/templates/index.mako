@@ -55,7 +55,7 @@
                                         <i class="bi bi-x"></i>
                                     </button>
 
-                                    <input class="form-control" type="text" name="search" value="${page.search_query or ""}" placeholder="tag, date, name…">
+                                    <input class="form-control" type="text" name="search" value="${page.search_query or ""}" placeholder="e.g. sort:date:d order:desc">
 
                                     <button class="btn btn-primary">
                                         <i class="bi bi-search"></i>
