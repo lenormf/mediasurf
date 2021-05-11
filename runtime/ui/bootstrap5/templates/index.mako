@@ -4,8 +4,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <link rel="stylesheet" href="/static/bootstrap/v5.0.0/css/bootstrap.min.css">
-        <link rel="stylesheet" href="/static/bootstrap-icons/v1.4.1/bootstrap-icons.min.css">
+        <link rel="stylesheet" href="/static/vendor/bootstrap/v5.0.0/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/static/vendor/bootstrap-icons/v1.4.1/bootstrap-icons.min.css">
 
         ## TODO: favicon
 
@@ -530,7 +530,7 @@
 
         ## TODO: footer
 
-        <script src="/static/bootstrap/v5.0.0/js/bootstrap.bundle.min.js"></script>
+        <script src="/static/vendor/bootstrap/v5.0.0/js/bootstrap.bundle.min.js"></script>
         <script>
             const searchFormInput = document.querySelector('#searchForm input[name="search"]'),
                   searchFormReset = document.getElementById("searchFormReset"),
