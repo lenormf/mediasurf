@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="/static/vendor/bootstrap/v5.0.0/css/bootstrap.min.css">
         <link rel="stylesheet" href="/static/vendor/bootstrap-icons/v1.4.1/bootstrap-icons.min.css">
 
-        ## TODO: favicon
+        <link rel="icon" href="/static/image/tsunami.svg" sizes="any" type="image/svg+xml">
 
         <title>ImageServ</title>
 
