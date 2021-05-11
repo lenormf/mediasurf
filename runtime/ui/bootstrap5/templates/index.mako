@@ -9,7 +9,9 @@
 
         <link rel="icon" href="/static/image/tsunami.svg" sizes="any" type="image/svg+xml">
 
-        <title>ImageServ</title>
+        <title>
+            MediaSurf - ${page.all_entries_count} entries
+        </title>
 
         <style>
             .shadow-xs {
@@ -38,8 +40,8 @@
         <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
                 <a class="navbar-brand" href="/">
-                    <i class="bi bi-camera2 d-inline-block align-text-top"></i>
-                    ImageServ
+                    <i class="bi bi-tsunami d-inline-block align-text-top"></i>
+                    MediaSurf
                 </a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">

@@ -837,9 +837,8 @@ class MediaDatabasePlugin(object):
 
 
 class Defaults:
-    # TODO: rebrand as MediaSurf
-    PROGRAM_NAME = "imageserv"
-    PROGRAM_DESCRIPTION = "ImageServ image gallery"
+    PROGRAM_NAME = "MediaSurf"
+    PROGRAM_DESCRIPTION = "MediaSurf media gallery"
 
     XDG_DATA_HOME = os.getenv("XDG_DATA_HOME") or os.path.join(os.getenv("HOME"), ".local", "share")
     XDG_CACHE_HOME = os.getenv("XDG_CACHE_HOME") or os.path.join(os.getenv("HOME"), ".cache")
@@ -864,6 +863,7 @@ class CliOptions(argparse.Namespace):
         parser.add_argument("-H", "--host", default=Defaults.HOST_BIND, help="Hostname to bind to")
         parser.add_argument("-P", "--port", type=int, default=Defaults.PORT_BIND, help="Port to listen on")
         parser.add_argument("-U", "--user-interface", default=Defaults.USER_INTERFACE, help="Name of the user interface to use")
+        # TODO: embed in script, remove option
         parser.add_argument("-D", "--data-dir", default=Defaults.DIR_DATA, help="Path to the directory that holds the data files (e.g. user interfaces)")
         parser.add_argument("-E", "--ephemerals", default=Defaults.DIR_EPHEMERALS, help="Path to the directory that holds ephemeral files (e.g. thumbnails)")
         parser.add_argument("paths", metavar="path", nargs="+", help="Path to the pictures or directories to share")
@@ -908,6 +908,7 @@ def main(av):
                 return 1
 
     bottle.TEMPLATE_PATH = [path_ui / "templates"]
+    # FIXME: the resources will be unpacked in the cache, but they are generated from the ui directory first
     bottle.app().resources = bottle.ResourceManager(str(path_ui / "static") + os.sep)
     bottle.app().resources.add_path(".")
 
