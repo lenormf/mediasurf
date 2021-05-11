@@ -17,22 +17,6 @@
             .shadow-xs {
                 box-shadow: 0 .0625rem .125rem rgba(0,0,0,.075) !important;
             }
-
-            .rotate-0 {
-                transform: rotate(0deg);
-            }
-            .rotate-90 {
-                transform: rotate(90deg);
-            }
-            .rotate-180 {
-                transform: rotate(180deg);
-            }
-            .rotate-270 {
-                transform: rotate(270deg);
-            }
-            .rotate-360 {
-                transform: rotate(360deg);
-            }
         </style>
     </head>
 
