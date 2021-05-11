@@ -43,10 +43,241 @@
 
                                     <input class="form-control" type="text" name="search" value="${page.search_query or ""}" placeholder="e.g. sort:date:d order:desc">
 
+                                    <button class="btn btn-light dropdown-toggle" type="button" id="searchFormHelp" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-question-circle"></i>
+                                    </button>
+
                                     <button class="btn btn-primary">
                                         <i class="bi bi-search"></i>
                                         search
                                     </button>
+
+                                    <ul class="dropdown-menu dropdown-menu-dark shadow-sm" aria-labelledby="searchFormHelp">
+                                        <li>
+                                            <h6 class="dropdown-header">
+                                                sort
+                                            </h6>
+                                        </li>
+
+                                        <li class="dropdown-item ms-2">
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        q:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        sort:
+                                                        <span class="fst-italic">
+                                                            field
+                                                        </span>
+                                                        <span class="text-muted">
+                                                            :
+                                                            <span class="fst-italic">
+                                                                type
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        e.g.:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        sort:name
+                                                    </span>
+
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        sort:tag:DateTime:d
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+
+                                        <li>
+                                            <h6 class="dropdown-header">
+                                                order
+                                            </h6>
+                                        </li>
+
+                                        <li class="dropdown-item ms-2">
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        q:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        <span class="text-muted">
+                                                            sort:…
+                                                        </span>
+                                                        order:
+                                                        <span class="fst-italic">
+                                                            order
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        e.g.:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        sort:… order:asc
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+
+                                        <li>
+                                            <h6 class="dropdown-header">
+                                                search
+                                            </h6>
+                                        </li>
+
+                                        <li class="dropdown-item ms-2">
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        q:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        <span class="fst-italic">
+                                                            field
+                                                        </span>
+                                                        :
+                                                        <span class="fst-italic">
+                                                            value
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        e.g.:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        name:IMG_
+                                                    </span>
+
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        date:2010
+                                                    </span>
+
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        tag:Make:Canon
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+
+                                        <li>
+                                            <h6 class="dropdown-header">
+                                                from, to
+                                            </h6>
+                                        </li>
+
+                                        <li class="dropdown-item ms-2">
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        q:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        from:
+                                                        <span class="fst-italic">
+                                                            date
+                                                        </span>
+                                                    </span>
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        to:
+                                                        <span class="fst-italic">
+                                                            date
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        e.g.:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        from:2010/12/31 to:2020
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+
+                                        <li>
+                                            <h6 class="dropdown-header">
+                                                type
+                                            </h6>
+                                        </li>
+
+                                        <li class="dropdown-item ms-2">
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        q:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        type:
+                                                        <span class="fst-italic">
+                                                            type
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div class="row gx-2 align-items-center mb-1">
+                                                <div class="col-auto">
+                                                    <span class="small text-muted">
+                                                        e.g.:
+                                                    </span>
+                                                </div>
+
+                                                <div class="col">
+                                                    <span class="badge bg-dark fw-normal font-monospace">
+                                                        type:video
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </ul>
                                 </div>
                             </form>
                         </li>
