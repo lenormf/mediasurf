@@ -434,7 +434,7 @@ class QueryParser(collections.OrderedDict):
 
     SEARCH_TOKEN = (
         (
-            (pp.Keyword("name") | pp.Keyword("date") | TAG_TOKEN)
+            (pp.Keyword("name") | pp.Keyword("date"))
             + pp.Suppress(":")
             + (pp.Word(pp.printables)
                | pp.dblQuotedString().setParseAction(pp.removeQuotes)
