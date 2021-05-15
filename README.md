@@ -24,6 +24,29 @@ Features include:
 
 ![Screenshot of the mobile view](/images/screenshot-mobile.png)
 
+## Docker
+
+A Docker image can be built using the following commands:
+
+```
+$ cd docker
+$ docker build -t mediasurf .
+```
+
+Once the command has successfully completed, use the newly created `mediasurf` image and mount the directory that contains the images to serve onto the `/media` volume:
+
+```
+$ docker run -P -v <directory_gallery>:/media mediasurf
+```
+
+The MediaSurf interface will be available at http://localhost:8080/
+
+### Build options
+
+The following build options (to pass to the `docker build` command as `--build-arg <option>=<value>` command line arguments) are available:
+
+- `RELEASE`: can be `master` (default) or a custom tag that marks a prior release
+
 ## Query syntax
 
 Queries allow filtering out entries from the gallery, and sorting them out. A query is a space separated combination of `command:argument` pairs, which can be written on and sent from the user interface (i.e. the gallery).
