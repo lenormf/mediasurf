@@ -837,7 +837,7 @@ class MediaDatabasePlugin(object):
 
 
 class Defaults:
-    PROGRAM_NAME = "MediaSurf"
+    PROGRAM_NAME = "mediasurf"
     PROGRAM_DESCRIPTION = "MediaSurf media gallery"
 
     XDG_DATA_HOME = os.getenv("XDG_DATA_HOME") or os.path.join(os.getenv("HOME"), ".local", "share")
