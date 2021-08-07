@@ -14,4 +14,8 @@ install: installdirs
 	install -m 0755 mediasurf.py $(bindir)/mediasurf
 	cp -r runtime/* $(sharedir)/
 
-.PHONY: all install installdirs
+uninstall:
+	rm -f $(bindir)/mediasurf
+	rm -rf $(sharedir)/
+
+.PHONY: all install installdirs uninstall
