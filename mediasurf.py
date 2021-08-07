@@ -86,8 +86,9 @@ def get_static_path(path):
     return static_file(path, root=bottle.app().resources.path[0])
 
 
-@get("/media/<uuid_media>", name="media_uuid")
-def get_media_uuid(mdb, uuid_media):
+# NOTE: the extension is not used here
+@get("/media/<uuid_media>.<extension>", name="media_uuid")
+def get_media_uuid(mdb, uuid_media, extension):
     assert bottle.app().resources.path
 
     if uuid_media not in mdb.db:
@@ -143,6 +144,7 @@ class Media:
     def __init__(self, path):
         self.path = path
         self.name = self.path.stem
+        self.extension = self.path.suffix[1:]
         self.hash = None
         self.resolution = None
         self.filetime = None

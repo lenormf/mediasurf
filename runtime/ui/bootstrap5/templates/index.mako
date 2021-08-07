@@ -561,13 +561,13 @@
                 % endif
 
                     <div class="card rounded-0 p-1 shadow-xs">
-                        <a href="${router.get_url("media_uuid", uuid_media=media.hash)}">
+                        <a href="${router.get_url("media_uuid", uuid_media=media.hash, extension=media.extension or media.format)}">
                             % if media.type == "image":
 
                             <picture class="mw-100">
                                 % if media.format.lower() == "gif":
 
-                                <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid", uuid_media=media.hash)}" loading="lazy">
+                                <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid", uuid_media=media.hash, extension=media.extension or media.format)}" loading="lazy">
 
                                 % else:
 
@@ -583,7 +583,7 @@
 
                             ## FIXME: find a way to load a breakpoint-specific poster with media-queries
                             <video class="mw-100" controls muted preload="none" poster="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl", extension="webp")}">
-                                <source src="${router.get_url("media_uuid", uuid_media=media.hash)}">
+                                <source src="${router.get_url("media_uuid", uuid_media=media.hash, extension=media.extension or media.format)}">
                             </video>
 
                             % endif
@@ -607,13 +607,13 @@
                                     % endif
 
                                     <li class="list-inline-item">
-                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}" download="${media.path.name}">
+                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash, extension=media.extension or media.format)}" download="${media.path.name}">
                                             <i class="bi bi-save"></i>
                                         </a>
                                     </li>
 
                                     <li class="list-inline-item">
-                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash)}" target="_blank">
+                                        <a class="text-decoration-none link-light" href="${router.get_url("media_uuid", uuid_media=media.hash, extension=media.extension or media.format)}" target="_blank">
                                             <i class="bi bi-box-arrow-up-right"></i>
                                         </a>
                                     </li>
