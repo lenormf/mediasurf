@@ -571,10 +571,10 @@
 
                                 % else:
 
-                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl")}" media="(min-width: 1400px)">
-                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="lg")}" media="(min-width: 992px)">
-                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="md")}" media="(min-width: 768px)">
-                                <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="sm")}" loading="lazy">
+                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl", extension="webp")}" media="(min-width: 1400px)">
+                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="lg", extension="webp")}" media="(min-width: 992px)">
+                                <source srcset="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="md", extension="webp")}" media="(min-width: 768px)">
+                                <img class="card-img-top rounded-0 border" src="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="sm", extension="webp")}" loading="lazy">
 
                                 % endif
                             </picture>
@@ -582,7 +582,7 @@
                             % elif media.type == "video":
 
                             ## FIXME: find a way to load a breakpoint-specific poster with media-queries
-                            <video class="mw-100" controls muted preload="none" poster="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl")}">
+                            <video class="mw-100" controls muted preload="none" poster="${router.get_url("media_uuid_thumbnail", uuid_media=media.hash, breakpoint="xxl", extension="webp")}">
                                 <source src="${router.get_url("media_uuid", uuid_media=media.hash)}">
                             </video>
 

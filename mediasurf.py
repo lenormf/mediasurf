@@ -98,8 +98,10 @@ def get_media_uuid(mdb, uuid_media):
     return static_file(path_media.name, root=path_media.parent)
 
 
-@get("/media/<uuid_media>/thumbnail/<breakpoint>", name="media_uuid_thumbnail")
-def get_media_uuid_thumbnail(mdb, uuid_media, breakpoint):
+# TODO: create a route without the extension to display an HTML page with details
+# NOTE: the extension is not used here, the file format is hardcoded
+@get("/media/<uuid_media>/thumbnail/<breakpoint>.<extension>", name="media_uuid_thumbnail")
+def get_media_uuid_thumbnail(mdb, uuid_media, breakpoint, extension):
     assert bottle.app().resources.path
 
     if uuid_media not in mdb.db:
