@@ -492,7 +492,7 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item text-light">
+                        <li class="nav-item text-light d-none d-lg-block">
                             % if page.has_previous_page:
 
                             <a class="nav-link d-inline-block" href="${page.url_first_page}" title="Jump to the first page">
@@ -547,7 +547,7 @@
         <div class="container-fluid my-2">
             % if page.all_entries_count > 0:
 
-            <div class="row g-1">
+            <div class="row g-1 mb-3 mb-lg-0">
                 % for i, media in enumerate(page.entries):
 
                 % if media.resolution[0] < media.resolution[1]:
@@ -729,6 +729,76 @@
 
                 % endfor
             </div>
+
+            <nav class="d-lg-none">
+                <ul class="pagination justify-content-end">
+                    % if page.has_previous_page:
+
+                    <li class="page-item">
+                        <a class="page-link" href="${page.url_first_page}" title="Jump to the first page">
+                            <i class="bi bi-chevron-bar-left"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item">
+                        <a class="page-link" href="${page.url_previous_page}" title="Jump to the previous page">
+                            <i class="bi bi-chevron-compact-left"></i>
+                        </a>
+                    </li>
+
+                    % else:
+
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" title="Jump to the first page">
+                            <i class="bi bi-chevron-bar-left"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" title="Jump to the previous page">
+                            <i class="bi bi-chevron-compact-left"></i>
+                        </a>
+                    </li>
+
+                    % endif
+
+                    <li class="page-item">
+                        <div class="page-link text-dark">
+                            ${page.page_offset * page.limit + (1 if page.all_entries_count > 0 else 0)} — ${page.page_offset * page.limit + page.entries_count} of ${page.all_entries_count}
+                        </div>
+                    </li>
+
+                    % if page.has_next_page:
+
+                    <li class="page-item">
+                        <a class="page-link" href="${page.url_next_page}" title="Jump to the next page">
+                            <i class="bi bi-chevron-compact-right"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item">
+                        <a class="page-link" href="${page.url_last_page}" title="Jump to the last page">
+                            <i class="bi bi-chevron-bar-right"></i>
+                        </a>
+                    </li>
+
+                    % else:
+
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" title="Jump to the next page">
+                            <i class="bi bi-chevron-compact-right"></i>
+                        </a>
+                    </li>
+
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" title="Jump to the last page">
+                            <i class="bi bi-chevron-bar-right"></i>
+                        </a>
+                    </li>
+
+                    % endif
+                </ul>
+            </nav>
 
             % else:
 
